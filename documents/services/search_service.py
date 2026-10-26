@@ -10,13 +10,13 @@ DEFAULT_LIMIT = 5
 
 
 @lru_cache(maxsize=1)  # create the client once and reuse it
-def _get_client():
-    return MongoClient(settings.DATABASES["default"]["HOST"])
+def _cached_collection(host, db_name):
+    return MongoClient(host)[db_name][Document._meta.db_table]
 
 
 def _get_collection():
-    db_name = settings.DATABASES["default"]["NAME"]
-    return _get_client()[db_name][Document._meta.db_table]
+    db = settings.DATABASES["default"]
+    return _cached_collection(db["HOST"], db["NAME"])
 
 
 def _get_index_name():
@@ -38,7 +38,7 @@ def semantic_search(question: str, limit: int = DEFAULT_LIMIT) -> list:
                 "index": _get_index_name(),
                 "path": "abstract",
                 "query": question,
-                "numCandidates": limit * 20,
+                "numCandidates": max(limit * 20, 100),
                 "limit": limit,
             }
         },

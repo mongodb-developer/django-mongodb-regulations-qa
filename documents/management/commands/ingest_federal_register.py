@@ -26,9 +26,9 @@ class Command(BaseCommand):
             ("per_page", "100"),
         ]
         headers = {"User-Agent": "regulations-qa-tutorial"}
-        url, saved = API_URL, 0
+        url, processed = API_URL, 0
 
-        while url and saved < options["limit"]:
+        while url and processed < options["limit"]:
             response = requests.get(
                 url,
                 params=params if url == API_URL else None,
@@ -40,25 +40,26 @@ class Command(BaseCommand):
 
             for item in page["results"]:
                 abstract = TAG_PATTERN.sub("", item.get("abstract") or "").strip()
-                if not abstract:
-                    continue
+                document_number = item.get("document_number")
+                if not abstract or not document_number:
+                    continue  # nothing to search on or to key the record by
                 agencies = item.get("agencies") or [{}]
                 Document.objects.update_or_create(
-                    document_number=item["document_number"],
+                    document_number=document_number,
                     defaults={
-                        "title": TAG_PATTERN.sub("", item["title"]),
-                        "doc_type": item["type"],
+                        "title": TAG_PATTERN.sub("", item.get("title") or ""),
+                        "doc_type": item.get("type") or "",
                         "agency": agencies[0].get("name", ""),
-                        "publication_date": item["publication_date"],
+                        "publication_date": item.get("publication_date"),
                         "abstract": abstract,
-                        "source_url": item["html_url"],
+                        "source_url": item.get("html_url") or "",
                     },
                 )
-                saved += 1
-                if saved >= options["limit"]:
+                processed += 1
+                if processed >= options["limit"]:
                     break
 
             url = page.get("next_page_url")
             time.sleep(1)
 
-        self.stdout.write(f"Saved {saved} documents.")
+        self.stdout.write(f"Processed {processed} documents.")

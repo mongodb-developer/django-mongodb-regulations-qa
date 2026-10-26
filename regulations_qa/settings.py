@@ -12,23 +12,34 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 from pathlib import Path
 import os
+
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
+def _required_env(name):
+    value = os.getenv(name)
+    if not value:
+        raise ImproperlyConfigured(
+            f"{name} is not set. Add it to your .env file."
+        )
+    return value
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-VECTOR_INDEX_NAME = os.getenv("VECTOR_INDEX_NAME")
+VECTOR_INDEX_NAME = _required_env("VECTOR_INDEX_NAME")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = _required_env("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "true").lower() in ("1", "true")
 
 ALLOWED_HOSTS = []
 
@@ -82,8 +93,8 @@ WSGI_APPLICATION = 'regulations_qa.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django_mongodb_backend',
-        'HOST': os.getenv("MONGODB_URI"),
-        'NAME': os.getenv("DB_NAME"),
+        'HOST': _required_env("MONGODB_URI"),
+        'NAME': _required_env("DB_NAME"),
     },
 }
 
